@@ -78,24 +78,34 @@ namespace Gatherly.API.Controllers.Events
             });
         }
 
-        // Join event using invitation token
         [HttpPost("{token}/join")]
         public async Task<IActionResult> Join(
-            string token,
-            CancellationToken cancellationToken)
+           string token,
+           CancellationToken cancellationToken)
         {
-            var member = await _invitationService.JoinAsync(
+            var result = await _invitationService.JoinAsync(
                 token,
                 GetUserId(),
                 cancellationToken);
 
-            if (member == null)
+            if (result == null)
             {
                 return NotFound(new
                 {
                     message = "Invitation is invalid, inactive, or expired."
                 });
             }
+
+            if (result.IsOrganizer)
+            {
+                return Ok(new
+                {
+                    message = "You are already the organizer of this event.",
+                    isOrganizer = true
+                });
+            }
+
+            var member = result.Member!;
 
             return Ok(new
             {
@@ -104,7 +114,8 @@ namespace Gatherly.API.Controllers.Events
                 member.UserId,
                 member.Role,
                 member.JoinedAt,
-                member.IsActive
+                member.IsActive,
+                isOrganizer = false
             });
         }
     }

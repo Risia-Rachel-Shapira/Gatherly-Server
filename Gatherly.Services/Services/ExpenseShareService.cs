@@ -8,15 +8,18 @@ namespace Gatherly.Services.Services
     {
         private readonly IExpenseRepository _expenses;
         private readonly IEventMemberRepository _members;
+        private readonly IEventRepository _events;
         private readonly IEventAccessService _eventAccess;
 
         public ExpenseShareService(
             IExpenseRepository expenses,
             IEventMemberRepository members,
+            IEventRepository events,
             IEventAccessService eventAccess)
         {
             _expenses = expenses;
             _members = members;
+            _events = events;
             _eventAccess = eventAccess;
         }
 
@@ -28,14 +31,27 @@ namespace Gatherly.Services.Services
             await _eventAccess.EnsureAccessAsync(
                 eventId, userId, cancellationToken);
 
+            var eventEntity = await _events.GetByIdAsync(
+                eventId, cancellationToken);
+
+            if (eventEntity == null)
+                throw new KeyNotFoundException("Event not found.");
+
             var expenses = await _expenses.GetByEventAsync(
                 eventId, cancellationToken);
 
             var members = await _members.GetActiveMembersAsync(
                 eventId, cancellationToken);
 
+            // סופרים משתמשים ייחודיים, כולל מארגן האירוע.
+            var participantIds = members
+                .Select(m => m.UserId)
+                .ToHashSet();
+
+            participantIds.Add(eventEntity.OrganizerId);
+
+            var membersCount = participantIds.Count;
             var totalExpenses = expenses.Sum(e => e.Amount);
-            var membersCount = members.Count;
 
             return new ExpenseShareResponseDto
             {

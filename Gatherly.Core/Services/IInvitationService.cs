@@ -10,7 +10,7 @@ namespace Gatherly.Core.Services
             int userId,
             CancellationToken cancellationToken = default);
 
-        Task<EventMember?> JoinAsync(
+        Task<JoinInvitationResult?> JoinAsync(
             string token,
             int userId,
             CancellationToken cancellationToken = default);

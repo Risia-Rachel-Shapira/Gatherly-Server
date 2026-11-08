@@ -11,14 +11,23 @@ namespace Gatherly.Tests.Services
     {
         private readonly Mock<IInvitationRepository> _invitationsMock;
         private readonly Mock<IEventMemberRepository> _membersMock;
-        private readonly InvitationService _service;
         private readonly Mock<IEventRepository> _eventsMock;
+        private readonly InvitationService _service;
 
         public InvitationServiceTests()
         {
             _invitationsMock = new Mock<IInvitationRepository>();
             _membersMock = new Mock<IEventMemberRepository>();
             _eventsMock = new Mock<IEventRepository>();
+
+            _eventsMock
+                .Setup(x => x.GetByIdAsync(
+                    It.IsAny<int>(),
+                    It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new Event
+                {
+                    OrganizerId = 1
+                });
 
             _service = new InvitationService(
                 _invitationsMock.Object,
@@ -29,7 +38,6 @@ namespace Gatherly.Tests.Services
         [Fact]
         public async Task JoinAsync_ValidInvitation_CreatesMembership()
         {
-            // Arrange
             var invitation = new Invitation
             {
                 Id = 1,
@@ -62,15 +70,15 @@ namespace Gatherly.Tests.Services
                     It.IsAny<CancellationToken>()))
                 .Returns(Task.CompletedTask);
 
-            // Act
             var result = await _service.JoinAsync("valid-token", 20);
 
-            // Assert
             Assert.NotNull(result);
-            Assert.Equal(5, result.EventId);
-            Assert.Equal(20, result.UserId);
-            Assert.Equal("Participant", result.Role);
-            Assert.True(result.IsActive);
+            Assert.False(result.IsOrganizer);
+            Assert.NotNull(result.Member);
+            Assert.Equal(5, result.Member.EventId);
+            Assert.Equal(20, result.Member.UserId);
+            Assert.Equal("Participant", result.Member.Role);
+            Assert.True(result.Member.IsActive);
 
             _membersMock.Verify(
                 x => x.AddAsync(
@@ -90,7 +98,6 @@ namespace Gatherly.Tests.Services
         [Fact]
         public async Task JoinAsync_ExpiredInvitation_ReturnsNull()
         {
-            // Arrange
             var invitation = new Invitation
             {
                 EventId = 5,
@@ -105,11 +112,9 @@ namespace Gatherly.Tests.Services
                     It.IsAny<CancellationToken>()))
                 .ReturnsAsync(invitation);
 
-            // Act
             var result = await _service.JoinAsync(
                 "expired-token", 20);
 
-            // Assert
             Assert.Null(result);
 
             _membersMock.Verify(
@@ -122,7 +127,6 @@ namespace Gatherly.Tests.Services
         [Fact]
         public async Task JoinAsync_InactiveInvitation_ReturnsNull()
         {
-            // Arrange
             var invitation = new Invitation
             {
                 EventId = 5,
@@ -137,18 +141,15 @@ namespace Gatherly.Tests.Services
                     It.IsAny<CancellationToken>()))
                 .ReturnsAsync(invitation);
 
-            // Act
             var result = await _service.JoinAsync(
                 "inactive-token", 20);
 
-            // Assert
             Assert.Null(result);
         }
 
         [Fact]
         public async Task JoinAsync_AlreadyActiveMember_ReturnsExistingMembership()
         {
-            // Arrange
             var invitation = new Invitation
             {
                 EventId = 5,
@@ -178,12 +179,12 @@ namespace Gatherly.Tests.Services
                     It.IsAny<CancellationToken>()))
                 .ReturnsAsync(existingMember);
 
-            // Act
             var result = await _service.JoinAsync(
                 "valid-token", 20);
 
-            // Assert
-            Assert.Same(existingMember, result);
+            Assert.NotNull(result);
+            Assert.False(result.IsOrganizer);
+            Assert.Same(existingMember, result.Member);
 
             _membersMock.Verify(
                 x => x.AddAsync(
@@ -200,7 +201,6 @@ namespace Gatherly.Tests.Services
         [Fact]
         public async Task JoinAsync_InactiveExistingMember_ReactivatesMembership()
         {
-            // Arrange
             var invitation = new Invitation
             {
                 EventId = 5,
@@ -235,14 +235,14 @@ namespace Gatherly.Tests.Services
                     It.IsAny<CancellationToken>()))
                 .Returns(Task.CompletedTask);
 
-            // Act
             var result = await _service.JoinAsync(
                 "valid-token", 20);
 
-            // Assert
             Assert.NotNull(result);
-            Assert.True(result.IsActive);
-            Assert.Equal("Participant", result.Role);
+            Assert.False(result.IsOrganizer);
+            Assert.NotNull(result.Member);
+            Assert.True(result.Member.IsActive);
+            Assert.Equal("Participant", result.Member.Role);
 
             _membersMock.Verify(
                 x => x.Update(existingMember),
@@ -261,20 +261,53 @@ namespace Gatherly.Tests.Services
         }
 
         [Fact]
+        public async Task JoinAsync_Organizer_ReturnsOrganizerResult()
+        {
+            var invitation = new Invitation
+            {
+                EventId = 5,
+                Token = "organizer-token",
+                IsActive = true,
+                ExpiresAt = DateTime.UtcNow.AddHours(1)
+            };
+
+            _invitationsMock
+                .Setup(x => x.GetByTokenAsync(
+                    "organizer-token",
+                    It.IsAny<CancellationToken>()))
+                .ReturnsAsync(invitation);
+
+            var result = await _service.JoinAsync(
+                "organizer-token", 1);
+
+            Assert.NotNull(result);
+            Assert.True(result.IsOrganizer);
+            Assert.Null(result.Member);
+
+            _membersMock.Verify(
+                x => x.AddAsync(
+                    It.IsAny<EventMember>(),
+                    It.IsAny<CancellationToken>()),
+                Times.Never);
+
+            _membersMock.Verify(
+                x => x.SaveChangesAsync(
+                    It.IsAny<CancellationToken>()),
+                Times.Never);
+        }
+
+        [Fact]
         public async Task JoinAsync_NonExistingInvitation_ReturnsNull()
         {
-            // Arrange
             _invitationsMock
                 .Setup(x => x.GetByTokenAsync(
                     "missing-token",
                     It.IsAny<CancellationToken>()))
                 .ReturnsAsync((Invitation?)null);
 
-            // Act
             var result = await _service.JoinAsync(
                 "missing-token", 20);
 
-            // Assert
             Assert.Null(result);
 
             _membersMock.Verify(

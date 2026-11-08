@@ -76,10 +76,10 @@ namespace Gatherly.Services.Services
             };
         }
 
-        public async Task<EventMember?> JoinAsync(
-            string token,
-            int userId,
-            CancellationToken cancellationToken = default)
+        public async Task<JoinInvitationResult?> JoinAsync(
+      string token,
+      int userId,
+      CancellationToken cancellationToken = default)
         {
             var invitation = await _invitations.GetByTokenAsync(
                 token, cancellationToken);
@@ -91,6 +91,22 @@ namespace Gatherly.Services.Services
                 return null;
             }
 
+            var eventEntity = await _events.GetByIdAsync(
+                invitation.EventId, cancellationToken);
+
+            if (eventEntity == null)
+                throw new KeyNotFoundException("Event not found.");
+
+            // The organizer is already part of the event.
+            if (eventEntity.OrganizerId == userId)
+            {
+                return new JoinInvitationResult
+                {
+                    IsOrganizer = true,
+                    Member = null
+                };
+            }
+
             var existingMember =
                 await _members.GetByEventAndUserAsync(
                     invitation.EventId,
@@ -98,7 +114,13 @@ namespace Gatherly.Services.Services
                     cancellationToken);
 
             if (existingMember != null && existingMember.IsActive)
-                return existingMember;
+            {
+                return new JoinInvitationResult
+                {
+                    IsOrganizer = false,
+                    Member = existingMember
+                };
+            }
 
             if (existingMember != null)
             {
@@ -110,7 +132,11 @@ namespace Gatherly.Services.Services
 
                 await _members.SaveChangesAsync(cancellationToken);
 
-                return existingMember;
+                return new JoinInvitationResult
+                {
+                    IsOrganizer = false,
+                    Member = existingMember
+                };
             }
 
             var member = new EventMember
@@ -125,7 +151,11 @@ namespace Gatherly.Services.Services
             await _members.AddAsync(member, cancellationToken);
             await _members.SaveChangesAsync(cancellationToken);
 
-            return member;
+            return new JoinInvitationResult
+            {
+                IsOrganizer = false,
+                Member = member
+            };
         }
     }
 }
