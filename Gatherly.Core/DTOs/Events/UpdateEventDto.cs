@@ -1,0 +1,21 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+
+namespace Gatherly.Core.DTOs.Events
+{
+    public class UpdateEventDto
+    {
+        public string Name { get; set; } = string.Empty;
+
+        public string? Description { get; set; }
+
+        public DateTime Date { get; set; }
+
+        public string? Location { get; set; }
+
+        public decimal? Budget { get; set; }
+    }
+}

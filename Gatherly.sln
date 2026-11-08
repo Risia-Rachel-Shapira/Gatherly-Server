@@ -1,0 +1,57 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.14.37531.7 d17.14
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Gatherly.API", "Gatherly.API\Gatherly.API.csproj", "{DFABC887-631E-4122-9FCE-DA744FCF4BA5}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Gatherly.Core", "Gatherly.Core\Gatherly.Core.csproj", "{2F850F45-449A-4042-B9E1-A286759F1F43}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Gatherly.Data", "Gatherly.Data\Gatherly.Data.csproj", "{5EE9330B-D85E-4896-BD7F-5171828EB6DC}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Gatherly.Services", "Gatherly.Services\Gatherly.Services.csproj", "{7CBAAC85-B698-47EE-A892-2F6507B907CA}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Gatherly.Tests", "Gatherly.Tests\Gatherly.Tests.csproj", "{3CBC15D5-E924-46FE-9A99-B932BE12FD10}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{8EC462FD-D22E-90A8-E5CE-7E832BA40C5D}"
+	ProjectSection(SolutionItems) = preProject
+		.gitignore = .gitignore
+		API-ENDPOINTS.md = API-ENDPOINTS.md
+		ERD.md = ERD.md
+		README.md = README.md
+	EndProjectSection
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{DFABC887-631E-4122-9FCE-DA744FCF4BA5}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{DFABC887-631E-4122-9FCE-DA744FCF4BA5}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{DFABC887-631E-4122-9FCE-DA744FCF4BA5}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{DFABC887-631E-4122-9FCE-DA744FCF4BA5}.Release|Any CPU.Build.0 = Release|Any CPU
+		{2F850F45-449A-4042-B9E1-A286759F1F43}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{2F850F45-449A-4042-B9E1-A286759F1F43}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{2F850F45-449A-4042-B9E1-A286759F1F43}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{2F850F45-449A-4042-B9E1-A286759F1F43}.Release|Any CPU.Build.0 = Release|Any CPU
+		{5EE9330B-D85E-4896-BD7F-5171828EB6DC}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{5EE9330B-D85E-4896-BD7F-5171828EB6DC}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{5EE9330B-D85E-4896-BD7F-5171828EB6DC}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{5EE9330B-D85E-4896-BD7F-5171828EB6DC}.Release|Any CPU.Build.0 = Release|Any CPU
+		{7CBAAC85-B698-47EE-A892-2F6507B907CA}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{7CBAAC85-B698-47EE-A892-2F6507B907CA}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{7CBAAC85-B698-47EE-A892-2F6507B907CA}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{7CBAAC85-B698-47EE-A892-2F6507B907CA}.Release|Any CPU.Build.0 = Release|Any CPU
+		{3CBC15D5-E924-46FE-9A99-B932BE12FD10}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{3CBC15D5-E924-46FE-9A99-B932BE12FD10}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{3CBC15D5-E924-46FE-9A99-B932BE12FD10}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{3CBC15D5-E924-46FE-9A99-B932BE12FD10}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {12275169-A19E-4DC7-8786-D4B1FF4DEA54}
+	EndGlobalSection
+EndGlobal
