@@ -8,3 +8,5 @@ appsettings.Development.json
 logs/
 node_modules/
 .idea/
+*.Backup.tmp
+*.tmp
