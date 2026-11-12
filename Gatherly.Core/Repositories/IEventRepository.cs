@@ -22,5 +22,8 @@ namespace Gatherly.Core.Repositories
         Task DeleteEventWithRelatedDataAsync(
             Event eventEntity,
             CancellationToken cancellationToken = default);
+        Task<Event?> GetByIdWithOrganizerAsync(
+    int id,
+    CancellationToken cancellationToken = default);
     }
 }

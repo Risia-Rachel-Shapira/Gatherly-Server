@@ -44,11 +44,17 @@ namespace Gatherly.API.Controllers.Auth
             var createdUser = await _userService.RegisterAsync(
                 user, cancellationToken);
 
-            return Ok(new UserResponseDto
+            var token = _tokenService.CreateToken(createdUser);
+
+            return Ok(new
             {
-                Id = createdUser.Id,
-                FullName = createdUser.FullName,
-                Email = createdUser.Email
+                Token = token,
+                User = new UserResponseDto
+                {
+                    Id = createdUser.Id,
+                    FullName = createdUser.FullName,
+                    Email = createdUser.Email
+                }
             });
         }
 

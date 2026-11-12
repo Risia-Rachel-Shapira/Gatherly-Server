@@ -23,6 +23,17 @@ namespace Gatherly.Data.Repositories
                 .Where(e => e.OrganizerId == organizerId)
                 .ToListAsync(cancellationToken);
         }
+        public async Task<Event?> GetByIdWithOrganizerAsync(
+    int id,
+    CancellationToken cancellationToken = default)
+        {
+            return await _dbSet
+                .Include(e => e.Organizer)
+                .AsNoTracking()
+                .FirstOrDefaultAsync(
+                    e => e.Id == id,
+                    cancellationToken);
+        }
 
         public async Task<(List<Event> Items, int TotalCount)> GetPagedAsync(
             int pageNumber,
@@ -60,10 +71,11 @@ namespace Gatherly.Data.Repositories
             var totalCount = await query.CountAsync(cancellationToken);
 
             var items = await query
-                .OrderBy(e => e.Id)
-                .Skip((pageNumber - 1) * pageSize)
-                .Take(pageSize)
-                .ToListAsync(cancellationToken);
+     .Include(e => e.Organizer)
+     .OrderBy(e => e.Id)
+     .Skip((pageNumber - 1) * pageSize)
+     .Take(pageSize)
+     .ToListAsync(cancellationToken);
 
             return (items, totalCount);
         }

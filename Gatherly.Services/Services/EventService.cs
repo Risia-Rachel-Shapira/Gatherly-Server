@@ -27,19 +27,24 @@ namespace Gatherly.Services.Services
         }
 
         public async Task<EventResponseDto?> GetByIdAsync(
-            int id,
-            int userId,
-            CancellationToken cancellationToken = default)
+        int id,
+        int userId,
+        CancellationToken cancellationToken = default)
         {
             await _eventAccess.EnsureAccessAsync(
                 id, userId, cancellationToken);
 
-            var eventEntity = await _eventRepository.GetByIdAsync(
+            var eventEntity = await _eventRepository.GetByIdWithOrganizerAsync(
                 id, cancellationToken);
 
-            return eventEntity == null
-                ? null
-                : _mapper.Map<EventResponseDto>(eventEntity);
+            if (eventEntity == null)
+                return null;
+
+            var result = _mapper.Map<EventResponseDto>(eventEntity);
+
+            result.OrganizerName = eventEntity.Organizer.FullName;
+
+            return result;
         }
 
         public async Task<PagedResult<EventResponseDto>> GetAllAsync(
@@ -65,7 +70,12 @@ namespace Gatherly.Services.Services
 
             return new PagedResult<EventResponseDto>
             {
-                Items = _mapper.Map<List<EventResponseDto>>(events),
+                Items = events.Select(e =>
+                {
+                    var dto = _mapper.Map<EventResponseDto>(e);
+                    dto.OrganizerName = e.Organizer.FullName;
+                    return dto;
+                }).ToList(),
                 PageNumber = pageNumber,
                 PageSize = pageSize,
                 TotalCount = totalCount
@@ -90,6 +100,7 @@ namespace Gatherly.Services.Services
                 DateTimeKind.Utc);
 
             eventEntity.OrganizerId = userId;
+            eventEntity.Organizer = user;
 
             await _eventRepository.AddAsync(
                 eventEntity, cancellationToken);
