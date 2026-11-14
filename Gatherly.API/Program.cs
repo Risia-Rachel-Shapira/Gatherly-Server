@@ -142,12 +142,8 @@ namespace Gatherly.API
             app.UseAuthentication();
             app.UseAuthorization();
 
-            // Swagger
-            if (app.Environment.IsDevelopment())
-            {
-                app.UseSwagger();
-                app.UseSwaggerUI();
-            }
+            app.UseSwagger();
+            app.UseSwaggerUI();
 
             app.MapControllers();
 
