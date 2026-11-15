@@ -28,7 +28,8 @@ namespace Gatherly.API
                     policy
                         .WithOrigins(
                             "http://localhost:5500",
-                            "http://127.0.0.1:5500")
+                            "http://127.0.0.1:5500",
+                            "https://gatherly-client.onrender.com")
                         .AllowAnyHeader()
                         .AllowAnyMethod();
                 });
