@@ -25,14 +25,17 @@ namespace Gatherly.Services.Services
         }
 
         public async Task<User?> GetByEmailAsync(
-            string email, CancellationToken cancellationToken = default)
+      string email, CancellationToken cancellationToken = default)
         {
+            email = email.Trim().ToLowerInvariant();
+
             return await _repository.GetByEmailAsync(email, cancellationToken);
         }
 
         public async Task<User> RegisterAsync(
             User user, CancellationToken cancellationToken = default)
         {
+            user.Email = user.Email.Trim().ToLowerInvariant();
             var existingUser = await _repository.GetByEmailAsync(
                 user.Email, cancellationToken);
 
