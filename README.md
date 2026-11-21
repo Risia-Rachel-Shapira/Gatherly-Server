@@ -126,7 +126,7 @@ The database initializer automatically applies pending migrations and creates in
 |---|---|---|
 | Demo Organizer | organizer@gatherly.local | Organizer123! |
 | Demo Participant | participant@gatherly.local | Participant123! |
-| Demo Admin | admin@gatherly.local | Set via `Seed:AdminPassword` |
+| Demo Admin | admin@gatherly.local | Admin123! (Development only, see below) |
 
 **Demo Event:**
 - Name: Gatherly Demo Event
@@ -138,7 +138,7 @@ The initializer also creates two sample items: Drinks and Snacks, and adds the p
 
 **Note:** These credentials are for local development and testing only.
 
-The demo admin is created on startup even if the database already has users, but only when `Seed:AdminPassword` is configured (for example with the environment variable `Seed__AdminPassword`). Its password is never stored in source code. An existing account with that email is never promoted to Admin.
+The demo admin is created on startup even if the database already has users. Its password is taken from `Seed:AdminPassword` (for example the environment variable `Seed__AdminPassword`). In the Development environment, if that setting is missing, the demo password `Admin123!` is used, so no setup is needed to run locally. In any other environment (e.g. Production) the setting is required, and without it the admin is not created. An existing account with that email is never promoted to Admin.
 
 ### Database Configuration
 

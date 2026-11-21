@@ -133,9 +133,21 @@ namespace Gatherly.API
                     .GetRequiredService<ILoggerFactory>()
                     .CreateLogger("DbInitializer");
 
+                // Demo admin password: from Seed:AdminPassword if set.
+                // In Development only, fall back to a fixed demo password
+                // (like the other demo users). Other environments require
+                // the setting and skip the admin without it.
+                var adminPassword = builder.Configuration["Seed:AdminPassword"];
+
+                if (string.IsNullOrWhiteSpace(adminPassword) &&
+                    app.Environment.IsDevelopment())
+                {
+                    adminPassword = "Admin123!";
+                }
+
                 await DbInitializer.InitializeAsync(
                     context,
-                    builder.Configuration["Seed:AdminPassword"],
+                    adminPassword,
                     seedLogger);
             }
 

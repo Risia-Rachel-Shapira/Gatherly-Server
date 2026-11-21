@@ -131,12 +131,12 @@ namespace Gatherly.Data.Initialization
                 return;
             }
 
-            // The password comes from configuration (Seed:AdminPassword),
-            // never from source code.
+            // The caller supplies the password (Seed:AdminPassword, or a
+            // demo fallback in Development only).
             if (string.IsNullOrWhiteSpace(adminPassword))
             {
                 logger?.LogWarning(
-                    "Seed:AdminPassword is not set; the demo admin {Email} was not created.",
+                    "No admin password was provided (set Seed:AdminPassword); the demo admin {Email} was not created.",
                     AdminEmail);
                 return;
             }
