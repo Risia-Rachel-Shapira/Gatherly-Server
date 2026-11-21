@@ -18,5 +18,10 @@ namespace Gatherly.Core.Repositories
         Task<List<ItemClaim>> GetActiveClaimsWithUsersAsync(
             int itemId,
             CancellationToken cancellationToken = default);
+
+        // All claims of an item, active and inactive (tracked).
+        Task<List<ItemClaim>> GetByItemAsync(
+            int itemId,
+            CancellationToken cancellationToken = default);
     }
 }

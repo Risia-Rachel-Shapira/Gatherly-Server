@@ -52,5 +52,14 @@ namespace Gatherly.Data.Repositories
                 .OrderBy(c => c.ClaimedAt)
                 .ToListAsync(cancellationToken);
         }
+
+        public async Task<List<ItemClaim>> GetByItemAsync(
+            int itemId,
+            CancellationToken cancellationToken = default)
+        {
+            return await _dbSet
+                .Where(c => c.ItemId == itemId)
+                .ToListAsync(cancellationToken);
+        }
     }
 }

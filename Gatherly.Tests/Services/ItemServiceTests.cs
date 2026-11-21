@@ -1,6 +1,7 @@
 ﻿
 using AutoMapper;
 using Gatherly.Core.DTOs.Items;
+using Gatherly.Core.Exceptions;
 using Gatherly.Core.Models;
 using Gatherly.Core.Repositories;
 using Gatherly.Services.Services;
@@ -13,6 +14,7 @@ namespace Gatherly.Tests.Services
     {
         private readonly Mock<IItemRepository> _itemsMock;
         private readonly Mock<IItemClaimRepository> _claimsMock;
+        private readonly Mock<IExpenseRepository> _expensesMock;
         private readonly Mock<IEventRepository> _eventsMock;
         private readonly Mock<IEventMemberRepository> _membersMock;
         private readonly Mock<IUserRepository> _usersMock;
@@ -24,6 +26,7 @@ namespace Gatherly.Tests.Services
         {
             _itemsMock = new Mock<IItemRepository>();
             _claimsMock = new Mock<IItemClaimRepository>();
+            _expensesMock = new Mock<IExpenseRepository>();
             _eventsMock = new Mock<IEventRepository>();
             _membersMock = new Mock<IEventMemberRepository>();
             _usersMock = new Mock<IUserRepository>();
@@ -32,6 +35,7 @@ namespace Gatherly.Tests.Services
             _service = new ItemService(
                 _itemsMock.Object,
                 _claimsMock.Object,
+                _expensesMock.Object,
                 _eventsMock.Object,
                 _membersMock.Object,
                 _usersMock.Object,
@@ -364,6 +368,9 @@ namespace Gatherly.Tests.Services
                     itemId, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(item);
 
+            SetupDeleteDependencies(
+                itemId, new List<ItemClaim>(), hasExpenses: false);
+
             _itemsMock
                 .Setup(x => x.SaveChangesAsync(
                     It.IsAny<CancellationToken>()))
@@ -477,6 +484,146 @@ namespace Gatherly.Tests.Services
             _itemsMock.Verify(
                 x => x.GetByEventAsync(
                     eventId, It.IsAny<CancellationToken>()),
+                Times.Never);
+        }
+
+        private Item SetupItemForDelete(
+            int itemId,
+            int eventId,
+            int organizerId)
+        {
+            SetupAccess(
+                eventId,
+                organizerId: organizerId,
+                userId: organizerId);
+
+            var item = new Item
+            {
+                Id = itemId,
+                EventId = eventId,
+                AddedByUserId = organizerId,
+                Quantity = 5
+            };
+
+            _itemsMock
+                .Setup(x => x.GetByIdAsync(
+                    itemId, It.IsAny<CancellationToken>()))
+                .ReturnsAsync(item);
+
+            return item;
+        }
+
+        private void SetupDeleteDependencies(
+            int itemId,
+            List<ItemClaim> claims,
+            bool hasExpenses)
+        {
+            _claimsMock
+                .Setup(x => x.GetByItemAsync(
+                    itemId, It.IsAny<CancellationToken>()))
+                .ReturnsAsync(claims);
+
+            _expensesMock
+                .Setup(x => x.AnyByItemAsync(
+                    itemId, It.IsAny<CancellationToken>()))
+                .ReturnsAsync(hasExpenses);
+        }
+
+        [Fact]
+        public async Task DeleteAsync_ItemWithActiveClaims_ThrowsConflictException()
+        {
+            // Arrange
+            const int itemId = 1;
+            SetupItemForDelete(itemId, eventId: 5, organizerId: 10);
+
+            SetupDeleteDependencies(
+                itemId,
+                new List<ItemClaim>
+                {
+                    new ItemClaim { Id = 1, ItemId = itemId, Quantity = 2, IsActive = true },
+                    new ItemClaim { Id = 2, ItemId = itemId, Quantity = 1, IsActive = false }
+                },
+                hasExpenses: false);
+
+            // Act & Assert
+            var ex = await Assert.ThrowsAsync<ConflictException>(
+                () => _service.DeleteAsync(itemId, 10));
+
+            Assert.Equal(
+                "אי אפשר למחוק פריט שמשתתפים כבר תפסו. בטלו קודם את התפיסות.",
+                ex.Message);
+
+            _claimsMock.Verify(
+                x => x.Delete(It.IsAny<ItemClaim>()), Times.Never);
+            _itemsMock.Verify(
+                x => x.Delete(It.IsAny<Item>()), Times.Never);
+            _itemsMock.Verify(
+                x => x.SaveChangesAsync(It.IsAny<CancellationToken>()),
+                Times.Never);
+        }
+
+        [Fact]
+        public async Task DeleteAsync_ItemWithLinkedExpenses_ThrowsConflictException()
+        {
+            // Arrange
+            const int itemId = 1;
+            SetupItemForDelete(itemId, eventId: 5, organizerId: 10);
+
+            SetupDeleteDependencies(
+                itemId, new List<ItemClaim>(), hasExpenses: true);
+
+            // Act & Assert
+            var ex = await Assert.ThrowsAsync<ConflictException>(
+                () => _service.DeleteAsync(itemId, 10));
+
+            Assert.Equal(
+                "אי אפשר למחוק פריט שיש לו הוצאות מקושרות. מחקו קודם את ההוצאות.",
+                ex.Message);
+
+            _itemsMock.Verify(
+                x => x.Delete(It.IsAny<Item>()), Times.Never);
+            _itemsMock.Verify(
+                x => x.SaveChangesAsync(It.IsAny<CancellationToken>()),
+                Times.Never);
+        }
+
+        [Fact]
+        public async Task DeleteAsync_ItemWithOnlyInactiveClaims_DeletesClaimsAndItemInOneSave()
+        {
+            // Arrange
+            const int itemId = 1;
+            var item = SetupItemForDelete(
+                itemId, eventId: 5, organizerId: 10);
+
+            var inactive1 = new ItemClaim { Id = 1, ItemId = itemId, Quantity = 2, IsActive = false };
+            var inactive2 = new ItemClaim { Id = 2, ItemId = itemId, Quantity = 1, IsActive = false };
+
+            SetupDeleteDependencies(
+                itemId,
+                new List<ItemClaim> { inactive1, inactive2 },
+                hasExpenses: false);
+
+            _itemsMock
+                .Setup(x => x.SaveChangesAsync(
+                    It.IsAny<CancellationToken>()))
+                .Returns(Task.CompletedTask);
+
+            // Act
+            var result = await _service.DeleteAsync(itemId, 10);
+
+            // Assert
+            Assert.True(result);
+
+            _claimsMock.Verify(x => x.Delete(inactive1), Times.Once);
+            _claimsMock.Verify(x => x.Delete(inactive2), Times.Once);
+            _itemsMock.Verify(x => x.Delete(item), Times.Once);
+
+            // One shared DbContext: a single SaveChanges commits both.
+            _itemsMock.Verify(
+                x => x.SaveChangesAsync(It.IsAny<CancellationToken>()),
+                Times.Once);
+            _claimsMock.Verify(
+                x => x.SaveChangesAsync(It.IsAny<CancellationToken>()),
                 Times.Never);
         }
     }

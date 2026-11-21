@@ -12,6 +12,7 @@ namespace Gatherly.Services.Services
     {
         private readonly IItemRepository _repository;
         private readonly IItemClaimRepository _claimRepository;
+        private readonly IExpenseRepository _expenseRepository;
         private readonly IEventRepository _eventRepository;
         private readonly IEventMemberRepository _memberRepository;
         private readonly IUserRepository _userRepository;
@@ -20,6 +21,7 @@ namespace Gatherly.Services.Services
         public ItemService(
             IItemRepository repository,
             IItemClaimRepository claimRepository,
+            IExpenseRepository expenseRepository,
             IEventRepository eventRepository,
             IEventMemberRepository memberRepository,
             IUserRepository userRepository,
@@ -27,6 +29,7 @@ namespace Gatherly.Services.Services
         {
             _repository = repository;
             _claimRepository = claimRepository;
+            _expenseRepository = expenseRepository;
             _eventRepository = eventRepository;
             _memberRepository = memberRepository;
             _userRepository = userRepository;
@@ -177,6 +180,30 @@ namespace Gatherly.Services.Services
             await EnsureCanManageItemAsync(
                 item, userId, cancellationToken);
 
+            // ItemClaims and Expenses reference Item with
+            // DeleteBehavior.Restrict, so check them first instead
+            // of letting SaveChanges fail with a 500.
+            var claims = await _claimRepository.GetByItemAsync(
+                id, cancellationToken);
+
+            if (claims.Any(c => c.IsActive))
+            {
+                throw new ConflictException(
+                    "אי אפשר למחוק פריט שמשתתפים כבר תפסו. בטלו קודם את התפיסות.");
+            }
+
+            if (await _expenseRepository.AnyByItemAsync(
+                    id, cancellationToken))
+            {
+                throw new ConflictException(
+                    "אי אפשר למחוק פריט שיש לו הוצאות מקושרות. מחקו קודם את ההוצאות.");
+            }
+
+            // Inactive (cancelled) claims are removed together with
+            // the item, in the same SaveChanges.
+            foreach (var claim in claims)
+                _claimRepository.Delete(claim);
+
             _repository.Delete(item);
 
             await _repository.SaveChangesAsync(cancellationToken);
@@ -217,7 +244,9 @@ namespace Gatherly.Services.Services
             }
 
             return eventEntity;
-        }        private async Task EnsureCanManageItemAsync(
+        }
+
+        private async Task EnsureCanManageItemAsync(
             Item item,
             int userId,
             CancellationToken cancellationToken)

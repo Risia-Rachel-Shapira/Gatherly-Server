@@ -30,5 +30,13 @@ namespace Gatherly.Data.Repositories
                 .FirstOrDefaultAsync(e => e.Id == id, cancellationToken);
         }
 
+        public async Task<bool> AnyByItemAsync(
+            int itemId,
+            CancellationToken cancellationToken = default)
+        {
+            return await _dbSet
+                .AnyAsync(e => e.ItemId == itemId, cancellationToken);
+        }
+
     }
 }

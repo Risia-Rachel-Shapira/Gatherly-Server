@@ -11,5 +11,9 @@ namespace Gatherly.Core.Repositories
         Task<Expense?> GetByIdWithPaidByUserAsync(
             int id,
             CancellationToken cancellationToken = default);
+
+        Task<bool> AnyByItemAsync(
+            int itemId,
+            CancellationToken cancellationToken = default);
     }
 }
