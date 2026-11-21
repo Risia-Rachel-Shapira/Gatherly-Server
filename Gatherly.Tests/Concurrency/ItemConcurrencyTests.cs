@@ -4,14 +4,31 @@ using Xunit;
 
 namespace Gatherly.Tests.Concurrency
 {
+    /// <summary>
+    /// A [Fact] that is skipped (not failed) when the GATHERLY_TEST_DB
+    /// environment variable is not set.
+    /// </summary>
+    public sealed class RequiresTestDbFactAttribute : FactAttribute
+    {
+        public const string EnvVarName = "GATHERLY_TEST_DB";
+
+        public RequiresTestDbFactAttribute()
+        {
+            if (string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable(EnvVarName)))
+            {
+                Skip = $"Skipped: environment variable '{EnvVarName}' is not set. " +
+                       "Set it to a PostgreSQL connection string to run this integration test.";
+            }
+        }
+    }
+
     public class ItemConcurrencyTests
     {
-        [Fact]
+        [RequiresTestDbFact]
         public async Task TwoContexts_UpdatingSameItem_SecondSaveThrowsConcurrencyException()
         {
-
             var connectionString =
-    "Host=localhost;Port=5432;Database=GatherlyDb;Username=postgres;Password=RACHELI97341";
+                Environment.GetEnvironmentVariable(RequiresTestDbFactAttribute.EnvVarName)!;
 
             var options = new DbContextOptionsBuilder<AppDbContext>()
                 .UseNpgsql(connectionString)
