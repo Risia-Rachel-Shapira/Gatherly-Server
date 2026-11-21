@@ -127,6 +127,11 @@ namespace Gatherly.Services.Services
 
             _mapper.Map(dto, eventEntity);
 
+            // PostgreSQL timestamptz requires DateTimeKind.Utc.
+            eventEntity.Date = DateTime.SpecifyKind(
+                eventEntity.Date,
+                DateTimeKind.Utc);
+
             _eventRepository.Update(eventEntity);
 
             await _eventRepository.SaveChangesAsync(

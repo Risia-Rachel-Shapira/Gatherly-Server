@@ -13,7 +13,9 @@ namespace Gatherly.Data.Repositories
             string token,
             CancellationToken cancellationToken = default)
         {
+            // Read-only: callers never modify the invitation.
             return await _dbSet
+                .AsNoTracking()
                 .FirstOrDefaultAsync(i => i.Token == token, cancellationToken);
         }
     }

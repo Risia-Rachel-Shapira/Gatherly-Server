@@ -14,6 +14,7 @@ namespace Gatherly.Data.Repositories
             CancellationToken cancellationToken = default)
         {
             return await _dbSet
+                .AsNoTracking()
                 .Include(e => e.PaidByUser)
                 .Where(e => e.EventId == eventId)
                 .ToListAsync(cancellationToken);
@@ -24,6 +25,7 @@ namespace Gatherly.Data.Repositories
             CancellationToken cancellationToken = default)
         {
             return await _dbSet
+                .AsNoTracking()
                 .Include(e => e.PaidByUser)
                 .FirstOrDefaultAsync(e => e.Id == id, cancellationToken);
         }

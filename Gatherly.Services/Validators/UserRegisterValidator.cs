@@ -18,7 +18,7 @@ namespace Gatherly.Services.Validators
 
             RuleFor(x => x.Password)
                 .NotEmpty()
-                .MinimumLength(8);
+                .Length(12, 64);
         }
     }
 }
