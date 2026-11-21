@@ -45,6 +45,7 @@ namespace Gatherly.Data.Repositories
             var totalCount = await query.CountAsync(cancellationToken);
 
             var items = await query
+                .Include(e => e.Organizer)
                 .OrderBy(e => e.Id)
                 .Skip((pageNumber - 1) * pageSize)
                 .Take(pageSize)

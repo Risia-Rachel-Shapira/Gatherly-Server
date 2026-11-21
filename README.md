@@ -192,7 +192,10 @@ The API uses JWT Bearer Authentication. Protected endpoints require a valid acce
 
 Gatherly uses two separate levels of authorization:
 
-- **Global role in the JWT (`Admin` / `User`).** The user's role is stored on the user and written into the token as a role claim. It controls access to system-wide endpoints and is enforced by ASP.NET Core with `[Authorize(Roles = "Admin")]`. For example, `GET /api/admin/users?pageNumber=1&pageSize=10` returns a paged list of all users; a regular user gets `403 Forbidden`.
+- **Global role in the JWT (`Admin` / `User`).** The user's role is stored on the user and written into the token as a role claim. It controls access to system-wide endpoints and is enforced by ASP.NET Core with `[Authorize(Roles = "Admin")]`. A regular user gets `403 Forbidden` on these endpoints. All admin logic lives in `AdminService`:
+  - `GET /api/admin/users?pageNumber=1&pageSize=10` – paged list of all users with their roles.
+  - `GET /api/admin/events?pageNumber=1&pageSize=10` – paged list of all events in the system, not only the admin's own.
+  - `DELETE /api/admin/events/{id}` – deletes any event, even when the admin is not its organizer, together with its related data (items, claims, expenses, contributions, invitations, members) in one transaction. Returns `204 No Content`, or `404 Not Found` if the event does not exist.
 - **Event-level permission (`Organizer` / `Participant`).** Whether a user may view or change an event depends on data: who organizes that event and who is an active member of it. Because this cannot be known from the token alone, it is checked in the Service layer (`EventAccessService`) against the database on every request.
 
 ## Logging and Error Handling

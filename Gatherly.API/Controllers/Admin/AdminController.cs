@@ -32,5 +32,38 @@ namespace Gatherly.API.Controllers.Admin
 
             return Ok(result);
         }
+
+        [HttpGet("events")]
+        public async Task<IActionResult> GetEvents(
+            [FromQuery] int pageNumber = 1,
+            [FromQuery] int pageSize = 10,
+            CancellationToken cancellationToken = default)
+        {
+            if (pageNumber < 1 || pageSize < 1 || pageSize > 100)
+                return BadRequest(
+                    "Page number must be at least 1 and page size must be between 1 and 100.");
+
+            var result = await _adminService.GetEventsAsync(
+                pageNumber, pageSize, cancellationToken);
+
+            return Ok(result);
+        }
+
+        [HttpDelete("events/{id}")]
+        public async Task<IActionResult> DeleteEvent(
+            [FromRoute] int id,
+            CancellationToken cancellationToken)
+        {
+            if (id <= 0)
+                return BadRequest();
+
+            var deleted = await _adminService.DeleteEventAsync(
+                id, cancellationToken);
+
+            if (!deleted)
+                return NotFound();
+
+            return NoContent();
+        }
     }
 }

@@ -14,6 +14,7 @@ namespace Gatherly.Tests.Services
     public class AdminServiceTests
     {
         private readonly Mock<IUserRepository> _userRepositoryMock = new();
+        private readonly Mock<IEventRepository> _eventRepositoryMock = new();
         private readonly AdminService _service;
 
         public AdminServiceTests()
@@ -22,7 +23,10 @@ namespace Gatherly.Tests.Services
                 cfg => cfg.AddProfile<MappingProfile>(),
                 NullLoggerFactory.Instance).CreateMapper();
 
-            _service = new AdminService(_userRepositoryMock.Object, mapper);
+            _service = new AdminService(
+                _userRepositoryMock.Object,
+                _eventRepositoryMock.Object,
+                mapper);
         }
 
         [Fact]
@@ -62,6 +66,91 @@ namespace Gatherly.Tests.Services
             _userRepositoryMock.Verify(
                 r => r.GetPagedAsync(
                     It.IsAny<int>(), It.IsAny<int>(), It.IsAny<CancellationToken>()),
+                Times.Never);
+        }
+
+        [Fact]
+        public async Task GetEventsAsync_ReturnsAllEventsPagedWithOrganizerNames()
+        {
+            var events = new List<Event>
+            {
+                new Event { Id = 1, Name = "Picnic", OrganizerId = 10,
+                    Organizer = new User { Id = 10, FullName = "Dana" } },
+                new Event { Id = 2, Name = "Party", OrganizerId = 20,
+                    Organizer = new User { Id = 20, FullName = "Yossi" } }
+            };
+
+            _eventRepositoryMock
+                .Setup(r => r.GetPagedAsync(1, 2, It.IsAny<CancellationToken>()))
+                .ReturnsAsync((events, 3));
+
+            var result = await _service.GetEventsAsync(1, 2);
+
+            Assert.Equal(1, result.PageNumber);
+            Assert.Equal(2, result.PageSize);
+            Assert.Equal(3, result.TotalCount);
+            Assert.Equal(2, result.TotalPages);
+            Assert.Collection(result.Items,
+                e => { Assert.Equal(1, e.Id); Assert.Equal("Dana", e.OrganizerName); },
+                e => { Assert.Equal(2, e.Id); Assert.Equal("Yossi", e.OrganizerName); });
+
+            // System-wide query, not the per-user one.
+            _eventRepositoryMock.Verify(
+                r => r.GetPagedForUserAsync(
+                    It.IsAny<int>(), It.IsAny<int>(), It.IsAny<int>(),
+                    It.IsAny<CancellationToken>()),
+                Times.Never);
+        }
+
+        [Theory]
+        [InlineData(0, 10)]
+        [InlineData(1, 0)]
+        [InlineData(1, 101)]
+        public async Task GetEventsAsync_InvalidPaging_ThrowsArgumentException(
+            int pageNumber, int pageSize)
+        {
+            await Assert.ThrowsAsync<ArgumentException>(
+                () => _service.GetEventsAsync(pageNumber, pageSize));
+
+            _eventRepositoryMock.Verify(
+                r => r.GetPagedAsync(
+                    It.IsAny<int>(), It.IsAny<int>(), It.IsAny<CancellationToken>()),
+                Times.Never);
+        }
+
+        [Fact]
+        public async Task DeleteEventAsync_EventOfAnotherOrganizer_DeletesWithRelatedData()
+        {
+            var eventEntity = new Event { Id = 7, OrganizerId = 42 };
+
+            _eventRepositoryMock
+                .Setup(r => r.GetByIdAsync(7, It.IsAny<CancellationToken>()))
+                .ReturnsAsync(eventEntity);
+
+            var result = await _service.DeleteEventAsync(7);
+
+            Assert.True(result);
+
+            _eventRepositoryMock.Verify(
+                r => r.DeleteEventWithRelatedDataAsync(
+                    eventEntity, It.IsAny<CancellationToken>()),
+                Times.Once);
+        }
+
+        [Fact]
+        public async Task DeleteEventAsync_EventNotFound_ReturnsFalse()
+        {
+            _eventRepositoryMock
+                .Setup(r => r.GetByIdAsync(99, It.IsAny<CancellationToken>()))
+                .ReturnsAsync((Event?)null);
+
+            var result = await _service.DeleteEventAsync(99);
+
+            Assert.False(result);
+
+            _eventRepositoryMock.Verify(
+                r => r.DeleteEventWithRelatedDataAsync(
+                    It.IsAny<Event>(), It.IsAny<CancellationToken>()),
                 Times.Never);
         }
     }
