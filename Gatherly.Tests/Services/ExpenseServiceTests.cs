@@ -90,6 +90,13 @@ namespace Gatherly.Tests.Services
                     It.IsAny<CancellationToken>()))
                 .Returns(Task.CompletedTask);
 
+            // The service reloads the expense after saving.
+            _repositoryMock
+                .Setup(r => r.GetByIdAsync(
+                    expense.Id,
+                    It.IsAny<CancellationToken>()))
+                .ReturnsAsync(expense);
+
             // Act
             var result = await _service.CreateAsync(dto, userId);
 
