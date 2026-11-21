@@ -1,9 +1,10 @@
 # Gatherly
 
 ## About
+
 Gatherly is an event management system that helps organizers manage events, participants, invitations, items, expenses, and contributions in one place.
 
-The system allows event organizers to create and manage events, invite participants, track shared items and expenses, and calculate each participant's equal share of the total costs.
+Organizers create and manage events, invite participants, track shared items and expenses, and calculate each participant's equal share of the total costs.
 
 ## Technologies
 
@@ -11,8 +12,7 @@ The system allows event organizers to create and manage events, invite participa
 - C#
 - ASP.NET Core Web API (.NET 8)
 - Entity Framework Core
-- PostgreSQL
-- Npgsql
+- PostgreSQL (Npgsql)
 - JWT Authentication
 - AutoMapper
 - FluentValidation
@@ -31,11 +31,11 @@ The system allows event organizers to create and manage events, invite participa
 
 The solution is divided into five projects:
 
-- **Gatherly.API** � REST API, controllers, authentication, middleware, and configuration.
-- **Gatherly.Core** � Core models, interfaces, DTOs, and application contracts.
-- **Gatherly.Data** � Database context, repositories, migrations, and seed data.
-- **Gatherly.Services** � Business logic, validation, and application services.
-- **Gatherly.Tests** � Unit and integration-related tests.
+- **Gatherly.API** – REST API, controllers, authentication, middleware, and configuration. Controllers only call services; they never use repositories directly.
+- **Gatherly.Core** – Models, DTOs, repository and service interfaces, and shared exceptions (such as `ConflictException`).
+- **Gatherly.Data** – Database context, repositories, migrations, and seed data.
+- **Gatherly.Services** – Business logic, validation, and application services.
+- **Gatherly.Tests** – Unit tests (xUnit + Moq) and an optional database concurrency test.
 
 ## Main Features
 
@@ -53,72 +53,81 @@ The solution is divided into five projects:
 - Optimistic concurrency handling.
 - Centralized exception handling and request correlation IDs.
 
-## Database
+## Data Model: the Many-to-Many Relationship
 
-The project uses PostgreSQL with Entity Framework Core Code First.
+The many-to-many relationship in Gatherly is **Event ↔ User**, implemented through the join entity **`EventMember`**:
 
-Database migrations are used to create and update the database schema.
+- An event has many members, and a user can be a member of many events.
+- `EventMember` holds `EventId` and `UserId`, plus data about the membership itself: `Role` (`Participant`), `JoinedAt`, and `IsActive`. Because the join table carries its own data, it is an explicit entity rather than a hidden EF Core join table.
+- A unique index on `(EventId, UserId)` ensures a user appears at most once per event. If an inactive member joins again through an invitation, the same row is reactivated (`IsActive = true`).
+- The event organizer is a separate one-to-many relationship (`Event.OrganizerId` → `User`) and always has access to the event.
 
-Seed data provides initial users for local development.
+See [ERD.md](ERD.md) for the full diagram.
+
+## Shared Limited Resource: Items and Claims
+
+Each event has shared **items** (for example "Drinks"), and each item has a limited **`Quantity`**. Participants **claim** part of that quantity (`ItemClaim`). The core rule:
+
+> The sum of all active claims on an item may never exceed the item's `Quantity`.
+
+The difficult case is two participants claiming the last units of the same item **at the same time**. Both requests read the same remaining quantity, both pass the check, and without protection both would be saved, over-claiming the item.
+
+Gatherly prevents this with **optimistic concurrency**:
+
+1. `Item` has a `Version` (`Guid`) property configured as an EF Core **concurrency token** (`IsConcurrencyToken()`).
+2. Every claim create, update, or cancel also marks the item as modified. On save, `AppDbContext` gives the item a new `Version`, and EF Core runs `UPDATE ... WHERE Id = @id AND Version = @originalVersion`.
+3. The first request to save wins and changes the `Version`. The second request's `UPDATE` matches no rows, so EF Core throws `DbUpdateConcurrencyException`. The claim and the item update are saved in the same `SaveChanges` call, so nothing from the losing request is saved.
+4. `Repository.SaveChangesAsync` catches only `DbUpdateConcurrencyException` and rethrows it as the domain `ConflictException` ("הפריט נתפס על ידי משתמש אחר. נסי שוב.").
+5. `ExceptionMiddleware` maps `ConflictException` to **`409 Conflict`** (logged as a Warning) and returns a JSON body with the message and the request's correlation ID. The client can reload the item and try again.
+
+A claim that simply asks for more than the remaining quantity is rejected before saving, also with **409** ("Not enough available quantity.").
 
 ## Running the Project
 
-1. Make sure PostgreSQL is installed and running.
-2. Configure the database connection string in the API configuration.
-3. Open `Gatherly.sln` in Visual Studio.
-4. Restore NuGet packages.
-5. Apply Entity Framework Core migrations.
-6. Run the `Gatherly.API` project.
-7. Open the client using a local development server.
+### Prerequisites
 
-## Testing
+- .NET 8 SDK
+- PostgreSQL running locally (default: `localhost:5432`, database `GatherlyDb`)
 
-Run the tests from the solution directory:
+### 1. Configure secrets with `dotnet user-secrets`
+
+Secrets are **not** stored in `appsettings.json`. For local development, use .NET user secrets (the API project already has a `UserSecretsId`). From the solution directory:
 
 ```bash
-dotnet test
+dotnet user-secrets set "ConnectionStrings:DefaultConnection" "Host=localhost;Port=5432;Database=GatherlyDb;Username=postgres;Password=<your-password>" --project Gatherly.API
+
+dotnet user-secrets set "Jwt:Key" "<a-random-secret-of-at-least-32-characters>" --project Gatherly.API
 ```
 
-Build the solution:
+- `ConnectionStrings:DefaultConnection` – the PostgreSQL connection string.
+- `Jwt:Key` – the signing key for JWTs (HMAC-SHA256; use at least 32 characters). The API refuses to start without it.
+- Optional: `Seed:AdminPassword` – the demo admin's password (see [Seed Data](#seed-data)).
+
+Check the values with `dotnet user-secrets list --project Gatherly.API`. User secrets are loaded only in the Development environment. In other environments, use environment variables instead (for example `ConnectionStrings__DefaultConnection` and `Jwt__Key`).
+
+### 2. Run the API
 
 ```bash
-dotnet build
+dotnet run --project Gatherly.API --launch-profile https
 ```
 
-## API Documentation
+Or open `Gatherly.sln` in Visual Studio, set `Gatherly.API` as the startup project, and run it.
 
-Swagger is configured to document and test the REST API endpoints.
+On startup, the database initializer applies any pending EF Core migrations and creates demo data when the database is empty, so there is no separate migration step.
 
-After starting the API, open the Swagger UI using the configured Swagger URL.
+| Profile | URL |
+|---|---|
+| HTTPS | https://localhost:7153 |
+| HTTP | http://localhost:5141 |
+| Swagger UI | https://localhost:7153/swagger |
 
-## Authentication
+Both launch profiles use the Development environment.
 
-The API uses JWT Bearer Authentication.
+### 3. Run the client
 
-Protected endpoints require a valid access token.
+Serve the frontend with a local development server (for example VS Code Live Server on `http://localhost:5500`, which is allowed by the API's CORS policy).
 
-Event permissions distinguish between organizers and active participants.
-
-### Authorization Levels
-
-Gatherly uses two separate levels of authorization:
-
-- **Global role in the JWT (`Admin` / `User`).** The user's role is stored on the user and written into the token as a role claim. It controls access to system-wide endpoints and is enforced by ASP.NET Core with `[Authorize(Roles = "Admin")]`. For example, `GET /api/admin/users?pageNumber=1&pageSize=10` returns a paged list of all users; a regular user gets `403 Forbidden`.
-- **Event-level permission (`Organizer` / `Participant`).** Whether a user may view or change an event depends on data: who organizes that event and who is an active member of it. Because this cannot be known from the token alone, it is checked in the Service layer (`EventAccessService`) against the database on every request.
-
-## Logging and Error Handling
-
-- NLog is used for application logging.
-- Logs are written to the console and daily log files.
-- Correlation IDs are used to track requests.
-- Global exception middleware provides consistent JSON error responses.
-- HTTP status codes are used to represent validation, authorization, not-found, and conflict errors.
-
-
-## Database
-### Seed Data
-
-The database initializer automatically applies pending migrations and creates initial demo data when the database is empty.
+## Seed Data
 
 **Demo Users:**
 
@@ -134,57 +143,71 @@ The database initializer automatically applies pending migrations and creates in
 - Budget: 1000
 - Management Type: Both
 
-The initializer also creates two sample items: Drinks and Snacks, and adds the participant as an active event member.
+The initializer also creates two sample items, Drinks and Snacks, and adds the participant as an active event member.
 
 **Note:** These credentials are for local development and testing only.
 
 The demo admin is created on startup even if the database already has users. Its password is taken from `Seed:AdminPassword` (for example the environment variable `Seed__AdminPassword`). In the Development environment, if that setting is missing, the demo password `Admin123!` is used, so no setup is needed to run locally. In any other environment (e.g. Production) the setting is required, and without it the admin is not created. An existing account with that email is never promoted to Admin.
 
-### Database Configuration
+## Testing
 
-Gatherly uses PostgreSQL as its database.
-
-Default development configuration:
-- Host: localhost
-- Port: 5432
-- Database: GatherlyDb
-- Provider: Npgsql
-
-Before running the application, make sure PostgreSQL is running and the connection string is configured in `appsettings.json`.
-
-### Running the Backend
-
-1. Open `Gatherly.sln` in Visual Studio.
-2. Make sure PostgreSQL is running.
-3. Configure the database connection string.
-4. Set `Gatherly.API` as the startup project.
-5. Run the application.
-6. Open the Swagger UI to explore and test the API.
-
-### Running the Tests
-
-Run the following command from the solution directory:
+Build and run all tests from the solution directory:
 
 ```bash
+dotnet build
 dotnet test
 ```
 
-### API Configuration
+The unit tests use Moq and need no database.
 
-The API runs locally using the following URLs:
+### Running the concurrency test
 
-| Profile | URL |
+`ItemConcurrencyTests` is an integration test against a real PostgreSQL database. It loads the same item in two separate `DbContext` instances, saves a change from the first, and checks that saving from the second throws `DbUpdateConcurrencyException`. This shows the `Version` concurrency token works in the real database.
+
+It is **skipped** unless the `GATHERLY_TEST_DB` environment variable is set to a PostgreSQL connection string. The database must already have the schema and at least one item; running the API once against it creates both. The test edits an item's `Description`, so use a development or test database, not production.
+
+PowerShell:
+
+```powershell
+$env:GATHERLY_TEST_DB = "Host=localhost;Port=5432;Database=GatherlyDb;Username=postgres;Password=<your-password>"
+dotnet test --filter "FullyQualifiedName~ItemConcurrencyTests"
+```
+
+Bash:
+
+```bash
+GATHERLY_TEST_DB="Host=localhost;Port=5432;Database=GatherlyDb;Username=postgres;Password=<your-password>" \
+  dotnet test --filter "FullyQualifiedName~ItemConcurrencyTests"
+```
+
+## API Documentation
+
+Swagger documents the REST API and lets you test the endpoints. After starting the API, open https://localhost:7153/swagger. See also [API-ENDPOINTS.md](API-ENDPOINTS.md).
+
+## Authentication
+
+The API uses JWT Bearer Authentication. Protected endpoints require a valid access token. Login checks the password in `UserService`, and `POST /api/Auth/register` returns `201 Created` with a token.
+
+### Authorization Levels
+
+Gatherly uses two separate levels of authorization:
+
+- **Global role in the JWT (`Admin` / `User`).** The user's role is stored on the user and written into the token as a role claim. It controls access to system-wide endpoints and is enforced by ASP.NET Core with `[Authorize(Roles = "Admin")]`. For example, `GET /api/admin/users?pageNumber=1&pageSize=10` returns a paged list of all users; a regular user gets `403 Forbidden`.
+- **Event-level permission (`Organizer` / `Participant`).** Whether a user may view or change an event depends on data: who organizes that event and who is an active member of it. Because this cannot be known from the token alone, it is checked in the Service layer (`EventAccessService`) against the database on every request.
+
+## Logging and Error Handling
+
+- NLog writes logs to the console and to daily files (`logs/gatherly-<date>.log`).
+- Every request gets a correlation ID: the `X-Correlation-ID` request header, or a new GUID. It is stored as the request's `TraceIdentifier`, returned in the `X-Correlation-ID` response header, included in error responses, and written to each log line (`${aspnet-TraceIdentifier}`).
+- Log level is Debug in Development and Info in other environments. Framework (`Microsoft.*`) logs are limited to warnings.
+- Passwords, JWTs, and invitation tokens are never logged (invitation tokens in URLs are masked).
+- A global exception middleware returns consistent JSON errors:
+
+| Status | When |
 |---|---|
-| HTTPS | https://localhost:7153 |
-| HTTP | http://localhost:5141 |
-| Swagger UI | https://localhost:7153/swagger |
-
-The application uses the Development environment during local development.
-
-### Database Requirements
-
-- PostgreSQL must be installed and running.
-- Database name: `GatherlyDb`
-- Default PostgreSQL port: `5432`
-
-The database initializer applies pending migrations and creates demo data when the database is empty.
+| 400 Bad Request | Validation errors (Data Annotations / FluentValidation, `ArgumentException`) |
+| 401 Unauthorized | Missing or invalid token, wrong login |
+| 403 Forbidden | `UnauthorizedAccessException` (no permission for the event or role) |
+| 404 Not Found | `KeyNotFoundException` or a missing resource |
+| 409 Conflict | `ConflictException`: concurrency conflicts and business conflicts (not enough quantity, email already registered) |
+| 500 Internal Server Error | Any other error (details are logged, not returned) |
