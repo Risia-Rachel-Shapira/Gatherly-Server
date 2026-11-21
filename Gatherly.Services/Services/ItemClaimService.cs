@@ -5,6 +5,7 @@ using Gatherly.Core.Exceptions;
 using Gatherly.Core.Models;
 using Gatherly.Core.Repositories;
 using Gatherly.Core.Services;
+using Microsoft.Extensions.Logging;
 
 namespace Gatherly.Services.Services
 {
@@ -14,17 +15,20 @@ namespace Gatherly.Services.Services
         private readonly IItemRepository _items;
         private readonly IMapper _mapper;
         private readonly IEventAccessService _eventAccess;
+        private readonly ILogger<ItemClaimService> _logger;
 
         public ItemClaimService(
             IItemClaimRepository claims,
             IItemRepository items,
             IMapper mapper,
-            IEventAccessService eventAccess)
+            IEventAccessService eventAccess,
+            ILogger<ItemClaimService> logger)
         {
             _claims = claims;
             _items = items;
             _mapper = mapper;
             _eventAccess = eventAccess;
+            _logger = logger;
         }
         public async Task<List<ItemClaimResponseDto>> GetByItemAsync(
     int itemId,
@@ -64,8 +68,16 @@ namespace Gatherly.Services.Services
             var claimedQuantity = claims.Sum(x => x.Quantity);
 
             if (claimedQuantity + dto.Quantity > item.Quantity)
+            {
+                _logger.LogWarning(
+                    "Claim rejected: user {UserId} requested {Requested} of item {ItemId}, " +
+                    "only {Available} of {Total} available.",
+                    userId, dto.Quantity, dto.ItemId,
+                    item.Quantity - claimedQuantity, item.Quantity);
+
                 throw new ConflictException(
                     "Not enough available quantity.");
+            }
 
             var claim = new ItemClaim
             {
@@ -79,7 +91,12 @@ namespace Gatherly.Services.Services
             // Trigger the Item concurrency token.
             _items.Update(item);
 
-            await _claims.SaveChangesAsync(cancellationToken);
+            await SaveWithConflictLoggingAsync(
+                "create", dto.ItemId, userId, cancellationToken);
+
+            _logger.LogInformation(
+                "Claim {ClaimId} created: user {UserId} claimed {Quantity} of item {ItemId}.",
+                claim.Id, userId, claim.Quantity, claim.ItemId);
 
             return _mapper.Map<ItemClaimResponseDto>(claim);
         }
@@ -117,15 +134,24 @@ namespace Gatherly.Services.Services
                 .Sum(x => x.Quantity);
 
             if (otherClaimsQuantity + dto.Quantity > item.Quantity)
+            {
+                _logger.LogWarning(
+                    "Claim update rejected: claim {ClaimId}, user {UserId} requested {Requested} " +
+                    "of item {ItemId}, only {Available} of {Total} available.",
+                    id, userId, dto.Quantity, claim.ItemId,
+                    item.Quantity - otherClaimsQuantity, item.Quantity);
+
                 throw new ConflictException(
                     "Not enough available quantity.");
+            }
 
             claim.Quantity = dto.Quantity;
 
             _claims.Update(claim);
             _items.Update(item);
 
-            await _claims.SaveChangesAsync(cancellationToken);
+            await SaveWithConflictLoggingAsync(
+                "update", claim.ItemId, userId, cancellationToken);
 
             return true;
         }
@@ -156,9 +182,32 @@ namespace Gatherly.Services.Services
             _claims.Update(claim);
             _items.Update(item);
 
-            await _claims.SaveChangesAsync(cancellationToken);
+            await SaveWithConflictLoggingAsync(
+                "cancel", claim.ItemId, userId, cancellationToken);
 
             return true;
+        }
+
+        // Saves and logs a Warning when another user changed the item
+        // first (optimistic concurrency conflict), then rethrows.
+        private async Task SaveWithConflictLoggingAsync(
+            string operation,
+            int itemId,
+            int userId,
+            CancellationToken cancellationToken)
+        {
+            try
+            {
+                await _claims.SaveChangesAsync(cancellationToken);
+            }
+            catch (ConflictException)
+            {
+                _logger.LogWarning(
+                    "Concurrency conflict on claim {Operation}: item {ItemId}, user {UserId}.",
+                    operation, itemId, userId);
+
+                throw;
+            }
         }
     }
 }

@@ -1,9 +1,16 @@
-﻿
+﻿using System.Text.RegularExpressions;
+
 namespace Gatherly.API.Middleware
 {
     public class CorrelationIdMiddleware
     {
         private const string HeaderName = "X-Correlation-ID";
+
+        // Invitation tokens are secrets that appear in the URL path
+        // (/api/Invitations/{token}[/join]); never write them to the log.
+        private static readonly Regex InvitationTokenInPath = new(
+            @"^(/api/invitations/)[^/]+",
+            RegexOptions.IgnoreCase | RegexOptions.Compiled);
 
         private readonly RequestDelegate _next;
         private readonly ILogger<CorrelationIdMiddleware> _logger;
@@ -44,10 +51,13 @@ namespace Gatherly.API.Middleware
                 _logger.LogInformation(
                     "Incoming request {Method} {Path}",
                     context.Request.Method,
-                    context.Request.Path);
+                    MaskSecrets(context.Request.Path));
 
                 await _next(context);
             }
         }
+
+        private static string MaskSecrets(PathString path) =>
+            InvitationTokenInPath.Replace(path.Value ?? string.Empty, "$1***");
     }
 }

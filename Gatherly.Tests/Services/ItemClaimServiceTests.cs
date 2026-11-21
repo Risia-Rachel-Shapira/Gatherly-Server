@@ -6,6 +6,7 @@ using Gatherly.Core.Models;
 using Gatherly.Core.Repositories;
 using Gatherly.Core.Services;
 using Gatherly.Services.Services;
+using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
 using Xunit;
 
@@ -37,7 +38,8 @@ namespace Gatherly.Tests.Services
                 _claimsMock.Object,
                 _itemsMock.Object,
                 _mapperMock.Object,
-                _eventAccessMock.Object);
+                _eventAccessMock.Object,
+                NullLogger<ItemClaimService>.Instance);
         }
 
         [Fact]
