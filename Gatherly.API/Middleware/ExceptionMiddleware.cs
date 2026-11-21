@@ -1,6 +1,6 @@
 ﻿
 using System.Text.Json;
-using Microsoft.EntityFrameworkCore;
+using Gatherly.Core.Exceptions;
 
 namespace Gatherly.API.Middleware
 {
@@ -33,8 +33,7 @@ namespace Gatherly.API.Middleware
                     UnauthorizedAccessException => 403,
                     KeyNotFoundException => 404,
                     ArgumentException => 400,
-                    DbUpdateConcurrencyException => 409,
-                    InvalidOperationException => 409,
+                    ConflictException => 409,
                     _ => 500
                 };
 
@@ -49,7 +48,8 @@ namespace Gatherly.API.Middleware
                 {
                     _logger.LogWarning(
                         ex,
-                        "Concurrency or conflict error. CorrelationId: {CorrelationId}",
+                        "Conflict: {Message}. CorrelationId: {CorrelationId}",
+                        ex.Message,
                         context.TraceIdentifier);
                 }
                 else

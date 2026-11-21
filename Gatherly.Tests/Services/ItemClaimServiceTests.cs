@@ -1,6 +1,7 @@
 ﻿
 using AutoMapper;
 using Gatherly.Core.DTOs.ItemClaims;
+using Gatherly.Core.Exceptions;
 using Gatherly.Core.Models;
 using Gatherly.Core.Repositories;
 using Gatherly.Core.Services;
@@ -162,7 +163,7 @@ namespace Gatherly.Tests.Services
         }
 
         [Fact]
-        public async Task CreateAsync_InsufficientQuantity_ThrowsInvalidOperationException()
+        public async Task CreateAsync_InsufficientQuantity_ThrowsConflictException()
         {
             // Arrange
             var dto = new CreateItemClaimDto
@@ -200,13 +201,65 @@ namespace Gatherly.Tests.Services
                 .ReturnsAsync(existingClaims);
 
             // Act & Assert
-            await Assert.ThrowsAsync<InvalidOperationException>(
+            await Assert.ThrowsAsync<ConflictException>(
                 () => _service.CreateAsync(dto, 10));
 
             _claimsMock.Verify(
                 x => x.AddAsync(
                     It.IsAny<ItemClaim>(),
                     It.IsAny<CancellationToken>()),
+                Times.Never);
+        }
+
+        [Fact]
+        public async Task CreateAsync_ConcurrentSave_ThrowsConflictException()
+        {
+            // Arrange: the quantity check passes, but another user
+            // saves first, so the repository reports a conflict.
+            var dto = new CreateItemClaimDto
+            {
+                ItemId = 1,
+                Quantity = 2
+            };
+
+            var item = new Item
+            {
+                Id = 1,
+                Quantity = 5
+            };
+
+            _itemsMock
+                .Setup(x => x.GetByIdAsync(
+                    1, It.IsAny<CancellationToken>()))
+                .ReturnsAsync(item);
+
+            _claimsMock
+                .Setup(x => x.GetActiveClaimsAsync(
+                    1, It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new List<ItemClaim>());
+
+            _claimsMock
+                .Setup(x => x.SaveChangesAsync(
+                    It.IsAny<CancellationToken>()))
+                .ThrowsAsync(new ConflictException(
+                    "הפריט נתפס על ידי משתמש אחר. נסי שוב."));
+
+            // Act & Assert
+            var ex = await Assert.ThrowsAsync<ConflictException>(
+                () => _service.CreateAsync(dto, 10));
+
+            Assert.Equal(
+                "הפריט נתפס על ידי משתמש אחר. נסי שוב.",
+                ex.Message);
+
+            _claimsMock.Verify(
+                x => x.AddAsync(
+                    It.IsAny<ItemClaim>(),
+                    It.IsAny<CancellationToken>()),
+                Times.Once);
+
+            _mapperMock.Verify(
+                x => x.Map<ItemClaimResponseDto>(It.IsAny<object>()),
                 Times.Never);
         }
 

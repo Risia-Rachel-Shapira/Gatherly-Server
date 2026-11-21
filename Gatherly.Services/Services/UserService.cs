@@ -1,4 +1,5 @@
-﻿using Gatherly.Core.Models;
+﻿using Gatherly.Core.Exceptions;
+using Gatherly.Core.Models;
 using Gatherly.Core.Repositories;
 using Gatherly.Core.Services;
 using Microsoft.AspNetCore.Identity;
@@ -40,7 +41,7 @@ namespace Gatherly.Services.Services
                 user.Email, cancellationToken);
 
             if (existingUser != null)
-                throw new InvalidOperationException("Email already exists.");
+                throw new ConflictException("Email already exists.");
 
             user.PasswordHash =
                 _passwordHasher.HashPassword(user, user.PasswordHash);

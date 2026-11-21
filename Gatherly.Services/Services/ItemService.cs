@@ -1,6 +1,7 @@
 ﻿
 using AutoMapper;
 using Gatherly.Core.DTOs.Items;
+using Gatherly.Core.Exceptions;
 using Gatherly.Core.Models;
 using Gatherly.Core.Repositories;
 using Gatherly.Core.Services;
@@ -142,7 +143,7 @@ namespace Gatherly.Services.Services
 
             if (claims.Sum(c => c.Quantity) > dto.Quantity)
             {
-                throw new InvalidOperationException(
+                throw new ConflictException(
                     "Quantity cannot be lower than the claimed quantity.");
             }
 

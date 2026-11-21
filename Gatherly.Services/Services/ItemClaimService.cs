@@ -1,6 +1,7 @@
 ﻿
 using AutoMapper;
 using Gatherly.Core.DTOs.ItemClaims;
+using Gatherly.Core.Exceptions;
 using Gatherly.Core.Models;
 using Gatherly.Core.Repositories;
 using Gatherly.Core.Services;
@@ -63,7 +64,7 @@ namespace Gatherly.Services.Services
             var claimedQuantity = claims.Sum(x => x.Quantity);
 
             if (claimedQuantity + dto.Quantity > item.Quantity)
-                throw new InvalidOperationException(
+                throw new ConflictException(
                     "Not enough available quantity.");
 
             var claim = new ItemClaim
@@ -116,7 +117,7 @@ namespace Gatherly.Services.Services
                 .Sum(x => x.Quantity);
 
             if (otherClaimsQuantity + dto.Quantity > item.Quantity)
-                throw new InvalidOperationException(
+                throw new ConflictException(
                     "Not enough available quantity.");
 
             claim.Quantity = dto.Quantity;

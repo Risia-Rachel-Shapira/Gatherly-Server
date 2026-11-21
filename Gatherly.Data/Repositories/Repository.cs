@@ -1,4 +1,5 @@
-﻿using Gatherly.Core.Repositories;
+﻿using Gatherly.Core.Exceptions;
+using Gatherly.Core.Repositories;
 using Gatherly.Data.Context;
 using Microsoft.EntityFrameworkCore;
 
@@ -52,7 +53,17 @@ namespace Gatherly.Data.Repositories
         public async Task SaveChangesAsync(
             CancellationToken cancellationToken = default)
         {
-            await _context.SaveChangesAsync(cancellationToken);
+            try
+            {
+                await _context.SaveChangesAsync(cancellationToken);
+            }
+            catch (DbUpdateConcurrencyException ex)
+            {
+                // The row's concurrency token (e.g. Item.Version) changed
+                // since it was read: another user saved first.
+                throw new ConflictException(
+                    "הפריט נתפס על ידי משתמש אחר. נסי שוב.", ex);
+            }
         }
     }
 }
