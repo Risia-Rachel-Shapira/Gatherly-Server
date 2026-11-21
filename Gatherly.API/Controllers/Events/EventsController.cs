@@ -23,7 +23,7 @@ namespace Gatherly.API.Controllers.Events
 
         [HttpGet("{id}")]
         public async Task<IActionResult> GetById(
-            int id, CancellationToken cancellationToken)
+            [FromRoute] int id, CancellationToken cancellationToken)
         {
             if (id <= 0)
                 return BadRequest();
@@ -65,7 +65,7 @@ namespace Gatherly.API.Controllers.Events
 
         [HttpPut("{id}")]
         public async Task<IActionResult> Update(
-            int id, [FromBody] UpdateEventDto dto,
+            [FromRoute] int id, [FromBody] UpdateEventDto dto,
             CancellationToken cancellationToken)
         {
             if (id <= 0)
@@ -82,7 +82,7 @@ namespace Gatherly.API.Controllers.Events
 
         [HttpDelete("{id}")]
         public async Task<IActionResult> Delete(
-            int id, CancellationToken cancellationToken)
+            [FromRoute] int id, CancellationToken cancellationToken)
         {
             if (id <= 0)
                 return BadRequest();

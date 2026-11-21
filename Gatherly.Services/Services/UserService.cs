@@ -33,6 +33,24 @@ namespace Gatherly.Services.Services
             return await _repository.GetByEmailAsync(email, cancellationToken);
         }
 
+        public async Task<User?> ValidateCredentialsAsync(
+            string email,
+            string password,
+            CancellationToken cancellationToken = default)
+        {
+            var user = await GetByEmailAsync(email, cancellationToken);
+
+            if (user == null)
+                return null;
+
+            var result = _passwordHasher.VerifyHashedPassword(
+                user, user.PasswordHash, password);
+
+            return result == PasswordVerificationResult.Failed
+                ? null
+                : user;
+        }
+
         public async Task<User> RegisterAsync(
             User user, CancellationToken cancellationToken = default)
         {

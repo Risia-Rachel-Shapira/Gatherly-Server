@@ -10,6 +10,12 @@ namespace Gatherly.Core.Services
             int userId,
             CancellationToken cancellationToken = default);
 
+        // Returns the invitation if it exists, is active and has not
+        // expired; otherwise null.
+        Task<InvitationResponseDto?> GetByTokenAsync(
+            string token,
+            CancellationToken cancellationToken = default);
+
         Task<JoinInvitationResult?> JoinAsync(
             string token,
             int userId,

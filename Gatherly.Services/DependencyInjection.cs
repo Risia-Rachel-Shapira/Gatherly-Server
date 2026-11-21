@@ -18,6 +18,7 @@ namespace Gatherly.Services
             services.AddScoped<IExpenseShareService, ExpenseShareService>();
             services.AddScoped<IUserService, UserService>();
             services.AddScoped<IEventService, EventService>();
+            services.AddScoped<IEventMemberService, EventMemberService>();
             services.AddScoped<IItemService, ItemService>();
             services.AddScoped<IItemClaimService, ItemClaimService>();
             services.AddScoped<IExpenseService, ExpenseService>();

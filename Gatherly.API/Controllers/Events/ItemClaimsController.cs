@@ -23,7 +23,7 @@ namespace Gatherly.API.Controllers.Events
 
         [HttpGet("item/{itemId}")]
         public async Task<IActionResult> GetByItem(
-    int itemId,
+    [FromRoute] int itemId,
     CancellationToken cancellationToken)
         {
             var claims = await _itemClaimService.GetByItemAsync(
@@ -42,12 +42,15 @@ namespace Gatherly.API.Controllers.Events
             var claim = await _itemClaimService.CreateAsync(
                 dto, GetUserId(), cancellationToken);
 
-            return Ok(claim);
+            return CreatedAtAction(
+                nameof(GetByItem),
+                new { itemId = claim.ItemId },
+                claim);
         }
 
         [HttpPut("{id}")]
         public async Task<IActionResult> Update(
-            int id, [FromBody] CreateItemClaimDto dto,
+            [FromRoute] int id, [FromBody] CreateItemClaimDto dto,
             CancellationToken cancellationToken)
         {
             var result = await _itemClaimService.UpdateAsync(
@@ -61,7 +64,7 @@ namespace Gatherly.API.Controllers.Events
 
         [HttpDelete("{id}")]
         public async Task<IActionResult> Cancel(
-            int id, CancellationToken cancellationToken)
+            [FromRoute] int id, CancellationToken cancellationToken)
         {
             var result = await _itemClaimService.CancelAsync(
                 id, GetUserId(), cancellationToken);

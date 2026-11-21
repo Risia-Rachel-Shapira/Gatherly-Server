@@ -4,7 +4,6 @@ using Gatherly.Core.Models;
 using Gatherly.Core.Services;
 using Gatherly.Core.DTOs.Users;
 using Gatherly.Core.Enums;
-using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Gatherly.API.Controllers.Auth
@@ -14,16 +13,13 @@ namespace Gatherly.API.Controllers.Auth
     public class AuthController : ControllerBase
     {
         private readonly IUserService _userService;
-        private readonly IPasswordHasher<User> _passwordHasher;
         private readonly JwtTokenService _tokenService;
 
         public AuthController(
             IUserService userService,
-            IPasswordHasher<User> passwordHasher,
             JwtTokenService tokenService)
         {
             _userService = userService;
-            _passwordHasher = passwordHasher;
             _tokenService = tokenService;
         }
 
@@ -46,7 +42,8 @@ namespace Gatherly.API.Controllers.Auth
 
             var token = _tokenService.CreateToken(createdUser);
 
-            return Ok(new
+            // 201 Created: a new user resource was created.
+            return StatusCode(StatusCodes.Status201Created, new
             {
                 Token = token,
                 User = new UserResponseDto
@@ -63,18 +60,10 @@ namespace Gatherly.API.Controllers.Auth
             [FromBody] UserLoginDto dto,
             CancellationToken cancellationToken)
         {
-            var user = await _userService.GetByEmailAsync(
-                dto.Email, cancellationToken);
+            var user = await _userService.ValidateCredentialsAsync(
+                dto.Email, dto.Password, cancellationToken);
 
             if (user == null)
-                return Unauthorized("Invalid email or password.");
-
-            var result = _passwordHasher.VerifyHashedPassword(
-                user,
-                user.PasswordHash,
-                dto.Password);
-
-            if (result == PasswordVerificationResult.Failed)
                 return Unauthorized("Invalid email or password.");
 
             var token = _tokenService.CreateToken(user);

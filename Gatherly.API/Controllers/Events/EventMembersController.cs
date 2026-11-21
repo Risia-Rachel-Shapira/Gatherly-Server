@@ -1,9 +1,5 @@
-﻿
-using System.Security.Claims;
-using AutoMapper;
-using Gatherly.Core.Repositories;
+﻿using System.Security.Claims;
 using Gatherly.Core.Services;
-using Gatherly.Core.DTOs.Events;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -14,23 +10,16 @@ namespace Gatherly.API.Controllers.Events
     [Route("api/[controller]")]
     public class EventMembersController : ControllerBase
     {
-        private readonly IEventMemberRepository _repository;
-        private readonly IEventAccessService _eventAccess;
-        private readonly IMapper _mapper;
+        private readonly IEventMemberService _memberService;
 
-        public EventMembersController(
-            IEventMemberRepository repository,
-            IEventAccessService eventAccess,
-            IMapper mapper)
+        public EventMembersController(IEventMemberService memberService)
         {
-            _repository = repository;
-            _eventAccess = eventAccess;
-            _mapper = mapper;
+            _memberService = memberService;
         }
 
         [HttpGet("{eventId}")]
         public async Task<IActionResult> GetActiveMembers(
-            int eventId,
+            [FromRoute] int eventId,
             CancellationToken cancellationToken)
         {
             var userIdClaim = User.FindFirst(
@@ -39,14 +28,8 @@ namespace Gatherly.API.Controllers.Events
             if (!int.TryParse(userIdClaim, out var userId))
                 return Unauthorized();
 
-            await _eventAccess.EnsureAccessAsync(
+            var result = await _memberService.GetActiveMembersAsync(
                 eventId, userId, cancellationToken);
-
-            var members = await _repository.GetActiveMembersAsync(
-                eventId, cancellationToken);
-
-            var result =
-                _mapper.Map<List<EventMemberResponseDto>>(members);
 
             return Ok(result);
         }

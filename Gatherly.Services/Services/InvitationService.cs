@@ -76,6 +76,30 @@ namespace Gatherly.Services.Services
             };
         }
 
+        public async Task<InvitationResponseDto?> GetByTokenAsync(
+            string token,
+            CancellationToken cancellationToken = default)
+        {
+            var invitation = await _invitations.GetByTokenAsync(
+                token, cancellationToken);
+
+            if (invitation == null ||
+                !invitation.IsActive ||
+                invitation.ExpiresAt <= DateTime.UtcNow)
+            {
+                return null;
+            }
+
+            return new InvitationResponseDto
+            {
+                Id = invitation.Id,
+                EventId = invitation.EventId,
+                Token = invitation.Token,
+                ExpiresAt = invitation.ExpiresAt,
+                IsActive = invitation.IsActive
+            };
+        }
+
         public async Task<JoinInvitationResult?> JoinAsync(
       string token,
       int userId,

@@ -1,6 +1,5 @@
 ﻿
 using Gatherly.Core.DTOs.Invitations;
-using Gatherly.Core.Repositories;
 using Gatherly.Core.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -13,14 +12,11 @@ namespace Gatherly.API.Controllers.Events
     [Route("api/[controller]")]
     public class InvitationsController : ControllerBase
     {
-        private readonly IInvitationRepository _repository;
         private readonly IInvitationService _invitationService;
 
         public InvitationsController(
-            IInvitationRepository repository,
             IInvitationService invitationService)
         {
-            _repository = repository;
             _invitationService = invitationService;
         }
 
@@ -55,32 +51,21 @@ namespace Gatherly.API.Controllers.Events
         // Get invitation by token
         [HttpGet("{token}")]
         public async Task<IActionResult> GetByToken(
-            string token,
+            [FromRoute] string token,
             CancellationToken cancellationToken)
         {
-            var invitation = await _repository.GetByTokenAsync(
+            var invitation = await _invitationService.GetByTokenAsync(
                 token, cancellationToken);
 
-            if (invitation == null ||
-                !invitation.IsActive ||
-                invitation.ExpiresAt <= DateTime.UtcNow)
-            {
+            if (invitation == null)
                 return NotFound();
-            }
 
-            return Ok(new InvitationResponseDto
-            {
-                Id = invitation.Id,
-                EventId = invitation.EventId,
-                Token = invitation.Token,
-                ExpiresAt = invitation.ExpiresAt,
-                IsActive = invitation.IsActive
-            });
+            return Ok(invitation);
         }
 
         [HttpPost("{token}/join")]
         public async Task<IActionResult> Join(
-           string token,
+           [FromRoute] string token,
            CancellationToken cancellationToken)
         {
             var result = await _invitationService.JoinAsync(

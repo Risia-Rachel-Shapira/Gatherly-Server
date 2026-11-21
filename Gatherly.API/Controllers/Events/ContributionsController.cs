@@ -23,7 +23,7 @@ namespace Gatherly.API.Controllers.Events
 
         [HttpGet("event/{eventId}")]
         public async Task<IActionResult> GetByEvent(
-            int eventId, CancellationToken cancellationToken)
+            [FromRoute] int eventId, CancellationToken cancellationToken)
         {
             var contributions = await _contributionService.GetByEventAsync(
     eventId, GetUserId(), cancellationToken);
@@ -47,7 +47,7 @@ namespace Gatherly.API.Controllers.Events
 
         [HttpPut("{id}")]
         public async Task<IActionResult> Update(
-            int id, [FromBody] CreateContributionDto dto,
+            [FromRoute] int id, [FromBody] CreateContributionDto dto,
             CancellationToken cancellationToken)
         {
             var result = await _contributionService.UpdateAsync(
@@ -61,7 +61,7 @@ namespace Gatherly.API.Controllers.Events
 
         [HttpDelete("{id}")]
         public async Task<IActionResult> Delete(
-            int id, CancellationToken cancellationToken)
+            [FromRoute] int id, CancellationToken cancellationToken)
         {
             var result = await _contributionService.DeleteAsync(
                 id, GetUserId(), cancellationToken);

@@ -29,7 +29,7 @@ namespace Gatherly.API.Controllers.Events
 
         [HttpGet("event/{eventId}")]
         public async Task<IActionResult> GetByEvent(
-            int eventId,
+            [FromRoute] int eventId,
             CancellationToken cancellationToken)
         {
             var expenses = await _expenseService.GetByEventAsync(
@@ -40,7 +40,7 @@ namespace Gatherly.API.Controllers.Events
 
         [HttpGet("event/{eventId}/share")]
         public async Task<IActionResult> GetExpenseShare(
-            int eventId,
+            [FromRoute] int eventId,
             CancellationToken cancellationToken)
         {
             var result = await _expenseShareService.GetShareAsync(
@@ -65,7 +65,7 @@ namespace Gatherly.API.Controllers.Events
 
         [HttpDelete("{id}")]
         public async Task<IActionResult> Delete(
-            int id,
+            [FromRoute] int id,
             CancellationToken cancellationToken)
         {
             var result = await _expenseService.DeleteAsync(
