@@ -9,7 +9,6 @@ namespace Gatherly.Data.Repositories
     {
         public ExpenseRepository(AppDbContext context) : base(context) { }
 
-
         public async Task<List<Expense>> GetByEventAsync(
             int eventId,
             CancellationToken cancellationToken = default)
