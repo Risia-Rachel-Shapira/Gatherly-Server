@@ -22,6 +22,25 @@ namespace Gatherly.Data.Repositories
                 .ToListAsync(cancellationToken);
         }
 
+        public async Task<Dictionary<int, int>> GetClaimedQuantitiesByEventAsync(
+            int eventId,
+            CancellationToken cancellationToken = default)
+        {
+            return await _dbSet
+                .AsNoTracking()
+                .Where(c => c.Item.EventId == eventId && c.IsActive)
+                .GroupBy(c => c.ItemId)
+                .Select(g => new
+                {
+                    ItemId = g.Key,
+                    Claimed = g.Sum(c => c.Quantity)
+                })
+                .ToDictionaryAsync(
+                    x => x.ItemId,
+                    x => x.Claimed,
+                    cancellationToken);
+        }
+
         public async Task<List<ItemClaim>> GetActiveClaimsWithUsersAsync(
             int itemId,
             CancellationToken cancellationToken = default)

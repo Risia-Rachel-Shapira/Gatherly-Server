@@ -387,6 +387,77 @@ namespace Gatherly.Tests.Services
         }
 
         [Fact]
+        public async Task GetByEventAsync_UsesSingleGroupedClaimsQuery()
+        {
+            // Arrange
+            const int eventId = 5;
+            const int userId = 20;
+
+            SetupAccess(eventId, organizerId: 10, userId);
+
+            var items = new List<Item>
+            {
+                new Item { Id = 1, EventId = eventId, Quantity = 5 },
+                new Item { Id = 2, EventId = eventId, Quantity = 3 },
+                new Item { Id = 3, EventId = eventId, Quantity = 2 }
+            };
+
+            _itemsMock
+                .Setup(x => x.GetByEventAsync(
+                    eventId, It.IsAny<CancellationToken>()))
+                .ReturnsAsync(items);
+
+            // Item 3 has no active claims, so it is missing here.
+            _claimsMock
+                .Setup(x => x.GetClaimedQuantitiesByEventAsync(
+                    eventId, It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new Dictionary<int, int>
+                {
+                    [1] = 2,
+                    [2] = 3
+                });
+
+            _mapperMock
+                .Setup(x => x.Map<ItemResponseDto>(It.IsAny<Item>()))
+                .Returns((object src) =>
+                {
+                    var i = (Item)src;
+                    return new ItemResponseDto
+                    {
+                        Id = i.Id,
+                        EventId = i.EventId,
+                        Quantity = i.Quantity
+                    };
+                });
+
+            // Act
+            var result = await _service.GetByEventAsync(eventId, userId);
+
+            // Assert
+            Assert.Equal(3, result.Count);
+
+            Assert.Equal(2, result[0].ClaimedQuantity);
+            Assert.Equal(3, result[0].RemainingQuantity);
+
+            Assert.Equal(3, result[1].ClaimedQuantity);
+            Assert.Equal(0, result[1].RemainingQuantity);
+
+            Assert.Equal(0, result[2].ClaimedQuantity);
+            Assert.Equal(2, result[2].RemainingQuantity);
+
+            _claimsMock.Verify(
+                x => x.GetClaimedQuantitiesByEventAsync(
+                    eventId, It.IsAny<CancellationToken>()),
+                Times.Once);
+
+            // No per-item claims query (N+1).
+            _claimsMock.Verify(
+                x => x.GetActiveClaimsAsync(
+                    It.IsAny<int>(), It.IsAny<CancellationToken>()),
+                Times.Never);
+        }
+
+        [Fact]
         public async Task GetByEventAsync_InactiveMember_ThrowsUnauthorizedAccessException()
         {
             // Arrange

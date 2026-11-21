@@ -69,18 +69,19 @@ namespace Gatherly.Services.Services
             var items = await _repository.GetByEventAsync(
                 eventId, cancellationToken);
 
-            var result = new List<ItemResponseDto>();
+            // One grouped query for all claimed quantities (no N+1).
+            var claimed =
+                await _claimRepository.GetClaimedQuantitiesByEventAsync(
+                    eventId, cancellationToken);
+
+            var result = new List<ItemResponseDto>(items.Count);
 
             foreach (var item in items)
             {
-                cancellationToken.ThrowIfCancellationRequested();
-
                 var dto = _mapper.Map<ItemResponseDto>(item);
 
-                var claims = await _claimRepository.GetActiveClaimsAsync(
-                    item.Id, cancellationToken);
-
-                dto.ClaimedQuantity = claims.Sum(c => c.Quantity);
+                dto.ClaimedQuantity =
+                    claimed.TryGetValue(item.Id, out var qty) ? qty : 0;
                 dto.RemainingQuantity =
                     item.Quantity - dto.ClaimedQuantity;
 
