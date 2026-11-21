@@ -162,9 +162,9 @@ The unit tests use Moq and need no database.
 
 ### Running the concurrency test
 
-`ItemConcurrencyTests` is an integration test against a real PostgreSQL database. It loads the same item in two separate `DbContext` instances, saves a change from the first, and checks that saving from the second throws `DbUpdateConcurrencyException`. This shows the `Version` concurrency token works in the real database.
+`ItemConcurrencyTests` is an integration test against a real PostgreSQL database. It creates a temporary item, loads it in two separate `DbContext` instances, saves a change from the first, and checks that saving from the second throws `DbUpdateConcurrencyException`. This shows the `Version` concurrency token works in the real database. The temporary item is deleted at the end, even if the test fails; no other data is changed.
 
-It is **skipped** unless the `GATHERLY_TEST_DB` environment variable is set to a PostgreSQL connection string. The database must already have the schema and at least one item; running the API once against it creates both. The test edits an item's `Description`, so use a development or test database, not production.
+It is **skipped** unless the `GATHERLY_TEST_DB` environment variable is set to a PostgreSQL connection string. The database must already have the schema and at least one event (the temporary item is attached to an existing event and its organizer). Even so, use a development or test database, not production.
 
 PowerShell:
 
