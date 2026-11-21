@@ -22,6 +22,7 @@ namespace Gatherly.Services
             services.AddScoped<IItemClaimService, ItemClaimService>();
             services.AddScoped<IExpenseService, ExpenseService>();
             services.AddScoped<IContributionService, ContributionService>();
+            services.AddScoped<IAdminService, AdminService>();
 
             services.AddValidatorsFromAssembly(
                 Assembly.GetExecutingAssembly());

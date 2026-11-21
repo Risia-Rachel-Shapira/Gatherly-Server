@@ -99,6 +99,13 @@ Protected endpoints require a valid access token.
 
 Event permissions distinguish between organizers and active participants.
 
+### Authorization Levels
+
+Gatherly uses two separate levels of authorization:
+
+- **Global role in the JWT (`Admin` / `User`).** The user's role is stored on the user and written into the token as a role claim. It controls access to system-wide endpoints and is enforced by ASP.NET Core with `[Authorize(Roles = "Admin")]`. For example, `GET /api/admin/users?pageNumber=1&pageSize=10` returns a paged list of all users; a regular user gets `403 Forbidden`.
+- **Event-level permission (`Organizer` / `Participant`).** Whether a user may view or change an event depends on data: who organizes that event and who is an active member of it. Because this cannot be known from the token alone, it is checked in the Service layer (`EventAccessService`) against the database on every request.
+
 ## Logging and Error Handling
 
 - NLog is used for application logging.
@@ -119,6 +126,7 @@ The database initializer automatically applies pending migrations and creates in
 |---|---|---|
 | Demo Organizer | organizer@gatherly.local | Organizer123! |
 | Demo Participant | participant@gatherly.local | Participant123! |
+| Demo Admin | admin@gatherly.local | Set via `Seed:AdminPassword` |
 
 **Demo Event:**
 - Name: Gatherly Demo Event
@@ -129,6 +137,8 @@ The database initializer automatically applies pending migrations and creates in
 The initializer also creates two sample items: Drinks and Snacks, and adds the participant as an active event member.
 
 **Note:** These credentials are for local development and testing only.
+
+The demo admin is created on startup even if the database already has users, but only when `Seed:AdminPassword` is configured (for example with the environment variable `Seed__AdminPassword`). Its password is never stored in source code. An existing account with that email is never promoted to Admin.
 
 ### Database Configuration
 

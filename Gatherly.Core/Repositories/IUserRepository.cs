@@ -7,5 +7,10 @@ namespace Gatherly.Core.Repositories
         Task<User?> GetByEmailAsync(
             string email,
             CancellationToken cancellationToken = default);
+
+        Task<(List<User> Items, int TotalCount)> GetPagedAsync(
+            int pageNumber,
+            int pageSize,
+            CancellationToken cancellationToken = default);
     }
 }

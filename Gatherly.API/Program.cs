@@ -129,7 +129,14 @@ namespace Gatherly.API
                 var context = scope.ServiceProvider
                     .GetRequiredService<AppDbContext>();
 
-                await DbInitializer.InitializeAsync(context);
+                var seedLogger = scope.ServiceProvider
+                    .GetRequiredService<ILoggerFactory>()
+                    .CreateLogger("DbInitializer");
+
+                await DbInitializer.InitializeAsync(
+                    context,
+                    builder.Configuration["Seed:AdminPassword"],
+                    seedLogger);
             }
 
             // Middleware Pipeline

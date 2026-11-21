@@ -2,6 +2,7 @@
 
 using Gatherly.Core.Models;
 
+using Gatherly.Core.DTOs.Admin;
 using Gatherly.Core.DTOs.Users;
 using Gatherly.Core.DTOs.Events;
 using Gatherly.Core.DTOs.Items;
@@ -25,6 +26,9 @@ namespace Gatherly.Services.Mapping
             CreateMap<CreateEventDto, Event>();
             CreateMap<UpdateEventDto, Event>();
             CreateMap<User, UserResponseDto>();
+            CreateMap<User, AdminUserDto>()
+                .ForMember(dest => dest.Role,
+                    opt => opt.MapFrom(src => src.Role.ToString()));
             CreateMap<Event, EventResponseDto>()
                 .ForMember(dest => dest.OrganizerName,
                     opt => opt.MapFrom(src => src.Organizer.FullName));

@@ -16,5 +16,23 @@ namespace Gatherly.Data.Repositories
             return await _dbSet
                 .FirstOrDefaultAsync(u => u.Email == email, cancellationToken);
         }
+
+        public async Task<(List<User> Items, int TotalCount)> GetPagedAsync(
+            int pageNumber,
+            int pageSize,
+            CancellationToken cancellationToken = default)
+        {
+            var query = _dbSet.AsNoTracking();
+
+            var totalCount = await query.CountAsync(cancellationToken);
+
+            var items = await query
+                .OrderBy(u => u.Id)
+                .Skip((pageNumber - 1) * pageSize)
+                .Take(pageSize)
+                .ToListAsync(cancellationToken);
+
+            return (items, totalCount);
+        }
     }
 }
