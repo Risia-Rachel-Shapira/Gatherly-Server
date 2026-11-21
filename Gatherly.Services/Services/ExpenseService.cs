@@ -40,7 +40,15 @@ namespace Gatherly.Services.Services
             await _repository.AddAsync(expense, cancellationToken);
             await _repository.SaveChangesAsync(cancellationToken);
 
-            return _mapper.Map<ExpenseResponseDto>(expense);
+
+            var savedExpense = await _repository.GetByIdAsync(
+                expense.Id, cancellationToken);
+
+            if (savedExpense == null)
+                throw new InvalidOperationException("Expense was not found after saving.");
+
+            return _mapper.Map<ExpenseResponseDto>(savedExpense);
+
         }
 
         public async Task<List<ExpenseResponseDto>> GetByEventAsync(

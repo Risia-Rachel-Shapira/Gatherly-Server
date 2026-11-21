@@ -9,13 +9,16 @@ namespace Gatherly.Data.Repositories
     {
         public ExpenseRepository(AppDbContext context) : base(context) { }
 
+
         public async Task<List<Expense>> GetByEventAsync(
             int eventId,
             CancellationToken cancellationToken = default)
         {
             return await _dbSet
+                .Include(e => e.PaidByUser)
                 .Where(e => e.EventId == eventId)
                 .ToListAsync(cancellationToken);
         }
+
     }
 }
