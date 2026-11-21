@@ -41,7 +41,8 @@ namespace Gatherly.Services.Services
             await _repository.SaveChangesAsync(cancellationToken);
 
 
-            var savedExpense = await _repository.GetByIdAsync(
+            // Reload with PaidByUser so the response includes PaidByUserName.
+            var savedExpense = await _repository.GetByIdWithPaidByUserAsync(
                 expense.Id, cancellationToken);
 
             if (savedExpense == null)

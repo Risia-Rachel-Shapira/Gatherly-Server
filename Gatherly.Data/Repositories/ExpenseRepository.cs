@@ -19,5 +19,14 @@ namespace Gatherly.Data.Repositories
                 .ToListAsync(cancellationToken);
         }
 
+        public async Task<Expense?> GetByIdWithPaidByUserAsync(
+            int id,
+            CancellationToken cancellationToken = default)
+        {
+            return await _dbSet
+                .Include(e => e.PaidByUser)
+                .FirstOrDefaultAsync(e => e.Id == id, cancellationToken);
+        }
+
     }
 }

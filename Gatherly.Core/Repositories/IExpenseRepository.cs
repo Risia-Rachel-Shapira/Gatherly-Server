@@ -7,5 +7,9 @@ namespace Gatherly.Core.Repositories
         Task<List<Expense>> GetByEventAsync(
             int eventId,
             CancellationToken cancellationToken = default);
+
+        Task<Expense?> GetByIdWithPaidByUserAsync(
+            int id,
+            CancellationToken cancellationToken = default);
     }
 }
